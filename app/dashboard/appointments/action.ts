@@ -3,24 +3,10 @@
 import type { AppointmentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/guards";
-
-const bookingSchema = z.object({
-  customerName: z.string().trim().min(2, "Enter the customer's name").max(80),
-  customerPhone: z
-    .string()
-    .trim()
-    .regex(/^[+0-9 ()-]{7,20}$/, "Enter a valid phone number"),
-  vehicle: z.string().trim().min(2, "Enter the vehicle").max(80),
-  serviceId: z.string().min(1, "Choose a service"),
-  scheduledAt: z
-    .string()
-    .min(1, "Pick a date and time")
-    .refine((v) => !Number.isNaN(Date.parse(v)), "Pick a valid date and time"),
-  notes: z.string().trim().max(300, "Notes are too long"),
-});
+import { canTransition } from "@/lib/appointment-status";
+import { bookingSchema } from "@/lib/validation";
 
 export type FormState = { error?: string; values?: Record<string, string> };
 
@@ -70,13 +56,6 @@ export async function createBooking(
   redirect("/dashboard/appointments");
 }
 
-const transitions: Record<AppointmentStatus, AppointmentStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["COMPLETED", "CANCELLED"],
-  COMPLETED: [],
-  CANCELLED: [],
-};
-
 export async function setAppointmentStatus(
   id: string,
   next: AppointmentStatus
@@ -87,7 +66,7 @@ export async function setAppointmentStatus(
     where: { id },
     select: { status: true },
   });
-  if (!appointment || !transitions[appointment.status].includes(next)) return;
+  if (!appointment || !canTransition(appointment.status, next)) return;
 
   await db.appointment.update({ where: { id }, data: { status: next } });
 

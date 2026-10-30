@@ -3,24 +3,9 @@
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireOwner } from "@/lib/guards";
-
-const serviceSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(60),
-  description: z.string().trim().max(300, "Description is too long"),
-  price: z.coerce
-    .number()
-    .int("Price must be a whole number")
-    .min(1, "Price must be at least 1")
-    .max(1_000_000),
-  durationMin: z.coerce
-    .number()
-    .int("Duration must be a whole number")
-    .min(5, "Duration must be at least 5 minutes")
-    .max(600),
-});
+import { serviceSchema } from "@/lib/validation";
 
 export type FormState = { error?: string; values?: Record<string, string> };
 
