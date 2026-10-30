@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { SidebarNav } from "./sidebar-nav";
-
+import { connection } from "next/server";
 async function UserMenu() {
+    await connection();
   const session = await auth();
   if (!session?.user) redirect("/login");
 
