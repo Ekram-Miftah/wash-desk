@@ -44,3 +44,18 @@ export async function getMonthlyRevenue(): Promise<RevenuePoint[]> {
     ORDER BY 1`;
   return toPoints(rows);
 }
+
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function getTodayKey() {
+  return dayKey(new Date());
+}
+
+// The last N days as "YYYY-MM-DD" keys in Ethiopia time, oldest first
+export function lastDayKeys(days: number): string[] {
+  const now = Date.now();
+  return Array.from({ length: days }, (_, i) =>
+    dayKey(new Date(now - (days - 1 - i) * DAY_MS))
+  );
+}

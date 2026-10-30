@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { requireOwner } from "@/lib/guards";
-import { dayKey, getDailyRevenue, getMonthlyRevenue } from "@/lib/revenue";
+import { getDailyRevenue, getMonthlyRevenue, getTodayKey, lastDayKeys } from "@/lib/revenue";
 import { formatBirr } from "@/lib/format";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { RevenueChart } from "./revenue-chart";
 
-const DAY = 24 * 60 * 60 * 1000;
+
 
 function monthLabel(key: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -31,14 +31,13 @@ async function ReportsContent() {
     getMonthlyRevenue(),
   ]);
 
-  const byDay = new Map(dailyRows.map((r) => [r.period, r]));
-  const now = Date.now();
-  const series = Array.from({ length: 30 }, (_, i) => {
-    const key = dayKey(new Date(now - (29 - i) * DAY));
-    return { label: key.slice(5), revenue: byDay.get(key)?.revenue ?? 0 };
-  });
+   const byDay = new Map(dailyRows.map((r) => [r.period, r]));
+  const series = lastDayKeys(30).map((key) => ({
+    label: key.slice(5),
+    revenue: byDay.get(key)?.revenue ?? 0,
+  }));
 
-  const todayKey = dayKey(new Date(now));
+  const todayKey = getTodayKey();
   const thisMonth = monthlyRows.find((m) => m.period === todayKey.slice(0, 7));
   const months = [...monthlyRows].reverse().slice(0, 12);
 
