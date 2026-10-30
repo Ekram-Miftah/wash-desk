@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WashDesk
 
-## Getting Started
+An admin dashboard for a car wash. The owner manages service pricing, schedules appointments, and sees daily and monthly revenue in one place.
 
-First, run the development server:
+**Live demo:** _added after deployment_
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Service pricing:** the owner adds services, edits prices and durations, and deactivates services without deleting history.
+- **Appointment scheduling:** create bookings and move each one through Pending, Confirmed and Completed (or Cancelled). Completed and cancelled bookings are locked.
+- **Revenue reports:** daily and monthly revenue from completed bookings. Owner only.
+- **Roles:** `OWNER` can do everything. `STAFF` can manage appointments but cannot change prices or see revenue.
+- **Ethiopia time:** times are stored in UTC and shown in `Africa/Addis_Ababa`, so days and months line up with the real business day.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16 (App Router, Cache Components), TypeScript, Prisma 6 with PostgreSQL (Neon), Auth.js (`next-auth` v5 beta) with credentials login, Tailwind CSS with shadcn/ui, Zod, Recharts, Vitest, pnpm.
 
-## Learn More
+## Design decisions
 
-To learn more about Next.js, take a look at the following resources:
+- Each appointment stores its own price when it is booked, so changing a service price later does not rewrite past revenue.
+- Prices always come from the database, never from the browser.
+- The proxy protects `/dashboard`, and every page and server action checks the session again with `requireUser()` or `requireOwner()`.
+- Business rules (allowed status changes, input validation) live in plain functions so they can be unit tested.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Getting started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+You need Node 20.9 or newer, pnpm, and a PostgreSQL database. A free Neon project works well.
 
-## Deploy on Vercel
+1. Install dependencies:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   pnpm install
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   If pnpm reports ignored build scripts, run `pnpm approve-builds` and approve them.
+
+2. Create your environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Fill in every value. Generate `AUTH_SECRET` with:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+
+3. Create the database tables:
+
+   ```bash
+   pnpm prisma migrate dev
+   ```
+
+4. Create the owner account and three starter services:
+
+   ```bash
+   pnpm tsx --env-file=.env prisma/seed.ts
+   ```
+
+5. Start the app and sign in at <http://localhost:3000> with the owner email and password from your `.env`:
+
+   ```bash
+   pnpm dev
+   ```
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Start the development server |
+| `pnpm build` | Build for production |
+| `pnpm test` | Run the unit tests |
+| `pnpm exec tsc --noEmit` | Type-check the project |
+
+## Environment variables
+
+| Name | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Pooled connection string used by the app |
+| `DIRECT_URL` | Direct connection string used by migrations |
+| `AUTH_SECRET` | Secret used to sign login sessions |
+| `SEED_OWNER_EMAIL` | Email of the owner account created by the seed script |
+| `SEED_OWNER_PASSWORD` | Password of the owner account created by the seed script |
+
+On a free Neon database the first request after a quiet period can be slow while the database wakes up. Adding `connect_timeout=30` to `DATABASE_URL` avoids connection errors in that case.
+
+## Testing
+
+`pnpm test` runs unit tests for the status-change rules, the input validation, and the Ethiopia-time formatting. There are no browser or database integration tests yet.
+
+## Known limitations
+
+- Only the seed script creates users. There is no screen for adding staff accounts yet.
+- Login attempts are not rate limited yet.
+- Revenue is counted on the day a booking was scheduled, because completion time is not recorded.
+- Bookings are created by staff inside the dashboard. There is no public booking page for customers.
